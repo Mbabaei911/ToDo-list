@@ -11,6 +11,8 @@ In the project directory, you can run:
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
+also run ###"npm run server" to start REST API to write to works on separate file by port 3005 (http://localhost:3005)
+
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
 
