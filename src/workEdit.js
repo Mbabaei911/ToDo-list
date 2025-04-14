@@ -1,30 +1,35 @@
-import React, { useState } from "react";
-
-const WorkEdit = ({ item,onSubmit }) => {
-  const [title, setTitle] = useState(item.work);
-
-  const handleChange = (e) => {
-    setTitle(e.target.value);
-  };
+import React from "react";
+import { useState } from "react";
+function WorkEdit({ item, onSubmit, onCancel }) {
+  const [editedWork, setEditedWork] = useState(item.work);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("new title", title);
-   onSubmit(item.id,title)
+    onSubmit(item.id, editedWork);
   };
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="form-group d-flex  flex-row justify-content-between align-items-center"
-    >
-      <label>Work</label>
-      <input
-        className="input form-control mx-2"
-        value={title}
-        onChange={handleChange}
-      />
-      <button className="btn btn-primary ">Save</button>
+    <form onSubmit={handleSubmit} className="w-100">
+      <div className="input-group">
+        <input
+          type="text"
+          value={editedWork}
+          onChange={(e) => setEditedWork(e.target.value)}
+          className="form-control"
+          autoFocus
+        />
+        <button type="submit" className="btn btn-success">
+          <i className="bi bi-check-circle"></i> Save
+        </button>
+        <button 
+          type="button" 
+          className="btn btn-secondary"
+          onClick={onCancel}
+        >
+          <i className="bi bi-x-circle"></i> Cancel
+        </button>
+      </div>
     </form>
   );
-};
+}
 export default WorkEdit;

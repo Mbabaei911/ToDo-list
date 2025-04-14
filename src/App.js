@@ -1,185 +1,170 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useCallback } from "react";
 import "./App.css";
 import axios from "axios";
 import WorkEdit from "./workEdit";
 
+const API_BASE_URL = "http://localhost:3005/works";
+
 function App() {
-  ////////////////
-  ////////// use states
   const [newWork, setNewWork] = useState("");
   const [allWorks, setAllWorks] = useState([]);
-  const [debouncedWork, setDebouncedWorks] = useState("");
-  const [number, setNumber] = useState(1);
-  // const [submitOrOk, setSubmitOrOk] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  /////////////////////
-  ///////use effect for debouncing
+  const [nextNumber, setNextNumber] = useState(1);
+  const [editingId, setEditingId] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const response = await axios.get(API_BASE_URL);
+      setAllWorks(response.data);
+      if (response.data.length > 0) {
+        const maxNumber = Math.max(...response.data.map(item => item.number));
+        setNextNumber(maxNumber + 1);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }, []);
+
   useEffect(() => {
-    const timerId = setTimeout(() => {
-      setDebouncedWorks(newWork);
-    }, 100);
-    return () => {
-      clearTimeout(timerId);
-    };
-  }, [newWork]);
+    fetchData();
+  }, [fetchData]);
 
-  // console.log(debouncedWork);
-
-  ////////////////
-  ///// useEffect for fetching
-  useEffect(() => {
-    fetchingData();
-    // setSubmitOrOk(false);
-  }, [debouncedWork]);
-
-  /////////////////////
-  //////posting and onclick handler
-
-  const onSubmitClick = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!newWork.trim()) return;
 
-    setTimeout(() => {
-      const posting = async () => {
-        await axios
-          .post("http://localhost:3005/works", {
-            work: `${debouncedWork}`,
-            number: `${number}`,
-          })
-          .then((res) => {
-            console.log(res);
-          });
-      };
+    try {
+      await axios.post(API_BASE_URL, {
+        work: newWork.trim(),
+        number: nextNumber,
+      });
       setNewWork("");
-      setNumber(number + 1);
-      posting();
-    }, 2000);
+      setNextNumber(prev => prev + 1);
+      fetchData();
+    } catch (error) {
+      console.error("Error submitting work:", error);
+    }
   };
 
-  ////////////////////
-  /////////fetching data
-  const allWorksFunction = (success) => {
-    setAllWorks(success);
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/${id}`);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting work:", error);
+    }
   };
 
-  const fetchingData = async () => {
-    return await axios.get("http://localhost:3005/works").then((res) => {
-      allWorksFunction(res.data);
-    });
+  const handleEdit = async (id, updatedWork) => {
+    try {
+      await axios.put(`${API_BASE_URL}/${id}`, { work: updatedWork });
+      fetchData();
+      setEditingId(null);
+    } catch (error) {
+      console.error("Error updating work:", error);
+    }
   };
 
-  //////////////////
-  ////on delete click
-  const onDeleteHandler = async (e) => {
-    const id = e.target.id;
-    await axios.delete(`http://localhost:3005/works/${id}`);
-    return fetchingData();
-  };
-  /////////////////////
-  ///////on edit click
-  const onEditClick = (e) => {
-    setShowEdit(!showEdit);
-  };
-  const editWorkById = (id, newWork) => {
-    const updatedWorks = allWorks.map((item) => {
-      if (item.id === id) {
-        return { ...item, work: newWork };
-      }
-      return item;
-    });
-    setAllWorks(updatedWorks);
+  const startEditing = (id) => {
+    setEditingId(id);
   };
 
-  ///////////////////
-  /////////handle submit for work edit
-  const handleSubmit = (id, newWork) => {
-    setShowEdit(false);
-    editWorkById(id, newWork);
+  const cancelEditing = () => {
+    setEditingId(null);
   };
-  //////////////////////////
-  ////rendering and jsx
 
-  const renderingAllWorks = () => {
-    return allWorks.map((item) => {
-      console.log(item);
-      let content = (
-        <h3>
-          {item.number}-{item.work}
-        </h3>
-      );
-      if (showEdit) {
-        content = <WorkEdit item={item} onSubmit={handleSubmit} />;
-      }
-      return (
-        <div key={item.id} className="todoApp">
-          <div className="container mx-auto border my-3 large shadow rounded  bg-white">
-            <div className="text-left my-4 d-flex flex-row justify-content-between align-items-center">
-              <>{content}</>
+  const renderWorkItems = () => {
+    return allWorks.map((item) => (
+      <div key={item.id} className="col-md-6 mb-3">
+        <div className="card shadow-sm">
+          <div className="card-body d-flex justify-content-between align-items-center">
+            {editingId === item.id ? (
+              <WorkEdit 
+                item={item} 
+                onSubmit={handleEdit} 
+                onCancel={cancelEditing}
+              />
+            ) : (
+              <>
+                <div className="d-flex align-items-center">
+                  <span className="badge bg-primary me-3 fs-6">{item.number}</span>
+                  <h5 className="card-title mb-0">{item.work}</h5>
+                </div>
+                <div className="btn-group">
+                  <button
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => startEditing(item.id)}
+                  >
+                    <i className="bi bi-pencil"></i> Edit
+                  </button>
+                  <button
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <i className="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    ));
+  };
 
-              <div className="">
-                <button
-                  id={item.id}
-                  className="btn  btn-danger mx-2"
-                  onClick={onDeleteHandler}
-                >
-                  Delete
-                </button>
+  return (
+    <div className="container py-4">
+      <div className="row justify-content-center">
+        <div className="col-lg-8">
+          <div className="card shadow mb-4">
+            <div className="card-header bg-primary text-white">
+              <h2 className="h4 mb-0 text-center">Todo App</h2>
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleSubmit}>
+                <div className="input-group mb-3">
+                  <input
+                    type="text"
+                    className="form-control form-control-lg"
+                    placeholder="What do you want to do?"
+                    value={newWork}
+                    onChange={(e) => setNewWork(e.target.value)}
+                  />
+                  <button 
+                    className="btn btn-primary btn-lg" 
+                    type="submit"
+                  >
+                    <i className="bi bi-plus-circle"></i> Add Task
+                  </button>
+                </div>
+              </form>
+              
+              <div className="mt-4">
+                <h3 className="h5 mb-3 text-muted border-bottom pb-2">
+                  Your Tasks
+                </h3>
+                <div className="row">
+                  {allWorks.length === 0 ? (
+                    <div className="col-12 text-center py-4">
+                      <div className="alert alert-info">
+                        No tasks yet. Add your first task above!
+                      </div>
+                    </div>
+                  ) : (
+                    renderWorkItems()
+                  )}
+                </div>
               </div>
+            </div>
+            <div className="card-footer text-muted small">
+              {allWorks.length} {allWorks.length === 1 ? 'task' : 'tasks'} total
             </div>
           </div>
         </div>
-      );
-    });
-  };
-
-  let editContent = null;
-  if (allWorks.length !== 0) {
-    editContent = (
-      <button
-        type="button"
-        className="btn  btn-success mx-2 px-4"
-        onClick={onEditClick}
-      >
-        Edit Works
-      </button>
-    );
-  } else {
-    editContent = null;
-  }
-
-  return (
-    <>
-      <div className="container mx-auto border my-4 large shadow rounded bg-white">
-        <h1 className="text-center mt-3">Todo App</h1>
-        <div className="my-5">
-          <form
-            className="row aligning my-4  mx-auto  "
-            onSubmit={onSubmitClick}
-          >
-            <div className="col text-center">
-              <label className="h5 ">What do you want to do?</label>
-            </div>
-            <div className="col ">
-              <input
-                id="input"
-                value={newWork}
-                type="text"
-                className="form-control"
-                onChange={(e) => {
-                  setNewWork(e.target.value);
-                }}
-              />
-            </div>
-            <div className="col">
-              <button type="submit" className="btn btn-primary px-5 my-2">
-                Submit
-              </button>
-              {editContent}
-            </div>
-          </form>
-        </div>
       </div>
-      {renderingAllWorks()}
-    </>
+    </div>
   );
 }
+
 export default App;
